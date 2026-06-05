@@ -1,6 +1,6 @@
 --- a/components/helium_services/pref_names.h
 +++ b/components/helium_services/pref_names.h
-@@ -1,6 +1,20 @@
+@@ -19,6 +19,20 @@
  inline constexpr char kHeliumServicesOrigin[] =
      "helium.services.origin_override";
  
@@ -23,7 +23,7 @@
  #endif  // COMPONENTS_HELIUM_SERVICES_PREF_NAMES_H_
 --- a/chrome/browser/ui/browser_ui_prefs.cc
 +++ b/chrome/browser/ui/browser_ui_prefs.cc
-@@ -1,5 +1,10 @@
+@@ -222,6 +222,11 @@
      registry->RegisterStringPref(prefs::kHeliumServicesOrigin, "");
    }
  
@@ -34,3 +34,4 @@
 +
    registry->RegisterBooleanPref(
        prefs::kHttpsOnlyModeEnabled, false,
+       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
