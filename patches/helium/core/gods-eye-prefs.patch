@@ -39,8 +39,8 @@
  #include "components/pref_registry/pref_registry_syncable.h"
 --- a/chrome/browser/ui/browser_ui_prefs.cc
 +++ b/chrome/browser/ui/browser_ui_prefs.cc
-@@ -223,6 +223,11 @@
-     registry->RegisterStringPref(prefs::kHeliumServicesOrigin, "");
+@@ -225,6 +225,11 @@
+     registry->RegisterBooleanPref(prefs::kHeliumServicesConsented, false);
    }
  
 +  registry->RegisterListPref(prefs::kGodsEyeBlockedDomains);

@@ -106,10 +106,10 @@ helium/core/add-arc-importer.patch
 helium/core/disable-unsupported-importers.patch
 helium/core/fix-building-without-safebrowsing.patch
 helium/core/services-prefs.patch
-helium/core/gods-eye-prefs.patch
 helium/core/services-schema-nag.patch
 helium/core/override-chrome-protocol.patch
 helium/core/onboarding-page.patch
+helium/core/gods-eye-prefs.patch
 helium/core/gods-eye-page.patch
 helium/core/gods-eye-restricted-page.patch
 helium/core/gods-eye-throttle.patch
