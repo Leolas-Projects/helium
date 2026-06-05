@@ -1,6 +1,6 @@
 --- a/chrome/browser/gods_eye/BUILD.gn
 +++ b/chrome/browser/gods_eye/BUILD.gn
-@@ -0,0 +1,21 @@
+@@ -0,0 +1,20 @@
 +# Copyright 2025 The Helium Authors
 +# You can use, redistribute, and/or modify this source code under
 +# the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -23,17 +23,15 @@
 +}
 --- a/chrome/browser/BUILD.gn
 +++ b/chrome/browser/BUILD.gn
-@@ -33,6 +33,7 @@ group("browser") {
+@@ -1,4 +1,5 @@
      "//chrome/browser/extensions",
      "//chrome/browser/favicon",
      "//chrome/browser/feedback",
 +    "//chrome/browser/gods_eye",
      "//chrome/browser/gcm",
-     "//chrome/browser/history",
-     "//chrome/browser/lifetime",
---- /dev/null
+--- a/chrome/browser/gods_eye/gods_eye_navigation_throttle.h
 +++ b/chrome/browser/gods_eye/gods_eye_navigation_throttle.h
-@@ -0,0 +1,52 @@
+@@ -0,0 +1,44 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -41,17 +39,13 @@
 +#ifndef CHROME_BROWSER_GODS_EYE_GODS_EYE_NAVIGATION_THROTTLE_H_
 +#define CHROME_BROWSER_GODS_EYE_GODS_EYE_NAVIGATION_THROTTLE_H_
 +
-+#include <string>
 +#include <memory>
++#include <string>
 +
 +#include "base/memory/raw_ptr.h"
 +#include "components/prefs/pref_service.h"
 +#include "content/public/browser/navigation_handle.h"
 +#include "content/public/browser/navigation_throttle.h"
-+
-+namespace content {
-+class NavigationHandle;
-+}
 +
 +class GodsEyeNavigationThrottle : public content::NavigationThrottle {
 + public:
@@ -73,11 +67,8 @@
 + private:
 +  ThrottleCheckResult CheckNavigation();
 +  bool IsGodsEyeActive() const;
-+  // Returns the matched blocked domain or empty string
 +  std::string MatchesDomain(const GURL& url) const;
-+  // Returns the matched blocked keyword in URL or empty string
 +  std::string MatchesKeyword(const GURL& url) const;
-+  // Redirect to chrome://restricted-page with reason/value/expiry params
 +  ThrottleCheckResult RedirectToRestrictedPage(const std::string& reason,
 +                                               const std::string& value);
 +
@@ -85,15 +76,16 @@
 +};
 +
 +#endif  // CHROME_BROWSER_GODS_EYE_GODS_EYE_NAVIGATION_THROTTLE_H_
---- /dev/null
+--- a/chrome/browser/gods_eye/gods_eye_navigation_throttle.cc
 +++ b/chrome/browser/gods_eye/gods_eye_navigation_throttle.cc
-@@ -0,0 +1,156 @@
+@@ -0,0 +1,161 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
 +
 +#include "chrome/browser/gods_eye/gods_eye_navigation_throttle.h"
 +
++#include "base/strings/string_number_conversions.h"
 +#include "base/strings/string_util.h"
 +#include "base/time/time.h"
 +#include "chrome/browser/profiles/profile.h"
@@ -110,11 +102,9 @@
 +std::unique_ptr<GodsEyeNavigationThrottle>
 +GodsEyeNavigationThrottle::MaybeCreateThrottleFor(
 +    content::NavigationHandle* handle) {
-+  // Only throttle main frame navigations
-+  if (!handle->IsInMainFrame()) {
++  if (!handle->IsInMainFrame())
 +    return nullptr;
-+  }
-+  // Don't throttle navigations to our own special pages
++
 +  const GURL& url = handle->GetURL();
 +  if (url.SchemeIs("chrome") &&
 +      (url.host() == chrome::kHeliumRestrictedPageHost ||
@@ -122,15 +112,17 @@
 +    return nullptr;
 +  }
 +
-+  content::WebContents* web_contents = handle->GetWebContents();
-+  if (!web_contents) return nullptr;
++  content::WebContents* wc = handle->GetWebContents();
++  if (!wc)
++    return nullptr;
 +
-+  Profile* profile =
-+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
-+  if (!profile || profile->IsOffTheRecord()) return nullptr;
++  Profile* profile = Profile::FromBrowserContext(wc->GetBrowserContext());
++  if (!profile || profile->IsOffTheRecord())
++    return nullptr;
 +
 +  PrefService* prefs = profile->GetPrefs();
-+  if (!prefs->GetBoolean(prefs::kGodsEyeActive)) return nullptr;
++  if (!prefs->GetBoolean(prefs::kGodsEyeActive))
++    return nullptr;
 +
 +  return std::make_unique<GodsEyeNavigationThrottle>(handle, prefs);
 +}
@@ -157,17 +149,15 @@
 +}
 +
 +bool GodsEyeNavigationThrottle::IsGodsEyeActive() const {
-+  if (!pref_service_->GetBoolean(prefs::kGodsEyeActive)) return false;
++  if (!pref_service_->GetBoolean(prefs::kGodsEyeActive))
++    return false;
 +
 +  double expiry = pref_service_->GetDouble(prefs::kGodsEyeExpiryTimestamp);
-+  if (expiry <= 0.0) return false;
++  if (expiry <= 0.0)
++    return false;
 +
-+  // Use system clock as authoritative check in the throttle.
-+  // TimeAPI is used only in the UI layer; here we trust system time
-+  // since this runs in the browser process and cannot be spoofed via JS.
 +  double now = base::Time::Now().InSecondsFSinceUnixEpoch();
 +  if (now >= expiry) {
-+    // Expiry passed — clear the active flag
 +    pref_service_->SetBoolean(prefs::kGodsEyeActive, false);
 +    return false;
 +  }
@@ -175,55 +165,42 @@
 +}
 +
 +std::string GodsEyeNavigationThrottle::MatchesDomain(const GURL& url) const {
-+  if (!url.has_host()) return "";
++  if (!url.has_host())
++    return "";
++
 +  std::string host = url.host();
-+  // Normalize: strip leading "www."
-+  if (base::StartsWith(host, "www.", base::CompareCase::INSENSITIVE_ASCII)) {
++  if (base::StartsWith(host, "www.", base::CompareCase::INSENSITIVE_ASCII))
 +    host = host.substr(4);
-+  }
 +
 +  const base::Value::List& domains =
 +      pref_service_->GetList(prefs::kGodsEyeBlockedDomains);
 +
 +  for (const auto& entry : domains) {
-+    if (!entry.is_string()) continue;
++    if (!entry.is_string())
++      continue;
 +    std::string blocked = entry.GetString();
-+    // Normalize blocked entry too
-+    if (base::StartsWith(blocked, "www.",
-+                         base::CompareCase::INSENSITIVE_ASCII)) {
++    if (base::StartsWith(blocked, "www.", base::CompareCase::INSENSITIVE_ASCII))
 +      blocked = blocked.substr(4);
-+    }
-+    // Exact match or subdomain match:
-+    // host == "sub.example.com" matches blocked "example.com"
-+    // host == "example.com" matches blocked "example.com"
-+    if (base::EqualsCaseInsensitiveASCII(host, blocked)) {
++    if (base::EqualsCaseInsensitiveASCII(host, blocked))
 +      return blocked;
-+    }
-+    std::string suffix = "." + blocked;
-+    if (base::EndsWith(host, suffix,
-+                       base::CompareCase::INSENSITIVE_ASCII)) {
++    if (base::EndsWith(host, "." + blocked,
++                       base::CompareCase::INSENSITIVE_ASCII))
 +      return blocked;
-+    }
 +  }
 +  return "";
 +}
 +
 +std::string GodsEyeNavigationThrottle::MatchesKeyword(const GURL& url) const {
-+  // Check the full URL spec (lowercased) for keyword presence.
-+  // This covers: path, query string, and hostname — sufficient for
-+  // search queries (e.g. google.com/search?q=blocked_keyword).
 +  std::string url_lower = base::ToLowerASCII(url.spec());
-+
 +  const base::Value::List& keywords =
 +      pref_service_->GetList(prefs::kGodsEyeBlockedKeywords);
-
++
 +  for (const auto& entry : keywords) {
-+    if (!entry.is_string()) continue;
++    if (!entry.is_string())
++      continue;
 +    std::string kw = base::ToLowerASCII(entry.GetString());
-+    if (kw.empty()) continue;
-+    if (url_lower.find(kw) != std::string::npos) {
++    if (!kw.empty() && url_lower.find(kw) != std::string::npos)
 +      return entry.GetString();
-+    }
 +  }
 +  return "";
 +}
@@ -235,55 +212,49 @@
 +  double expiry = pref_service_->GetDouble(prefs::kGodsEyeExpiryTimestamp);
 +  std::string redirect_url =
 +      std::string(chrome::kHeliumRestrictedPageURL) + "/?reason=" +
-+      net::EscapeQueryParamValue(reason, /*use_plus=*/false) + "&value=" +
-+      net::EscapeQueryParamValue(value, /*use_plus=*/false) + "&expiry=" +
++      net::EscapeQueryParamValue(reason, false) + "&value=" +
++      net::EscapeQueryParamValue(value, false) + "&expiry=" +
 +      base::NumberToString(static_cast<int64_t>(expiry));
-
++
 +  navigation_handle()->GetWebContents()->GetController().LoadURL(
 +      GURL(redirect_url), content::Referrer(),
 +      ui::PAGE_TRANSITION_AUTO_TOPLEVEL, std::string());
-
++
 +  return CANCEL;
 +}
 +
 +GodsEyeNavigationThrottle::ThrottleCheckResult
 +GodsEyeNavigationThrottle::CheckNavigation() {
-+  if (!IsGodsEyeActive()) return PROCEED;
-
++  if (!IsGodsEyeActive())
++    return PROCEED;
++
 +  const GURL& url = navigation_handle()->GetURL();
-
-+  // 1. Check domain list
++
 +  std::string matched_domain = MatchesDomain(url);
-+  if (!matched_domain.empty()) {
++  if (!matched_domain.empty())
 +    return RedirectToRestrictedPage("domain", matched_domain);
-+  }
-
-+  // 2. Check keyword list against full URL
++
 +  std::string matched_keyword = MatchesKeyword(url);
-+  if (!matched_keyword.empty()) {
++  if (!matched_keyword.empty())
 +    return RedirectToRestrictedPage("keyword", matched_keyword);
-+  }
-
++
 +  return PROCEED;
 +}
 --- a/chrome/browser/loader/chrome_navigation_throttle_registrar.cc
 +++ b/chrome/browser/loader/chrome_navigation_throttle_registrar.cc
-@@ -10,6 +10,7 @@
- #include "chrome/browser/loader/chrome_navigation_throttle_registrar.h"
- 
+@@ -1,2 +1,3 @@
  #include "base/feature_list.h"
 +#include "chrome/browser/gods_eye/gods_eye_navigation_throttle.h"
  #include "chrome/browser/profiles/profile.h"
- #include "content/public/browser/navigation_handle.h"
- #include "content/public/browser/navigation_throttle.h"
-@@ -45,6 +46,12 @@ ChromeNavigationThrottleRegistrar::MaybeCreateThrottles(
+--- a/chrome/browser/loader/chrome_navigation_throttle_registrar.cc
++++ b/chrome/browser/loader/chrome_navigation_throttle_registrar.cc
+@@ -1,5 +1,10 @@
    throttles.push_back(std::make_unique<ExampleThrottle>(navigation_handle));
  #endif
  
-+  // Gods Eye blocking throttle
-+  if (auto throttle =
-+          GodsEyeNavigationThrottle::MaybeCreateThrottleFor(navigation_handle)) {
-+    throttles.push_back(std::move(throttle));
++  if (auto t = GodsEyeNavigationThrottle::MaybeCreateThrottleFor(
++          navigation_handle)) {
++    throttles.push_back(std::move(t));
 +  }
 +
    return throttles;

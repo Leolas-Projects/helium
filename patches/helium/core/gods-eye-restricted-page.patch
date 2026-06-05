@@ -1,55 +1,43 @@
 --- a/chrome/common/webui_url_constants.h
 +++ b/chrome/common/webui_url_constants.h
-@@ -494,6 +494,8 @@ inline constexpr char kHeliumGodsEyeHost[] = "godseye";
+@@ -1,3 +1,5 @@
+ inline constexpr char kHeliumGodsEyeHost[] = "godseye";
  inline constexpr char kHeliumGodsEyeURL[] = "chrome://godseye";
- inline constexpr char kHeliumSetupHost[] = "setup";
- inline constexpr char kHeliumSetupURL[] = "chrome://setup";
 +inline constexpr char kHeliumRestrictedPageHost[] = "restricted-page";
 +inline constexpr char kHeliumRestrictedPageURL[] = "chrome://restricted-page";
- inline constexpr char kChromeUIHistorySyncOptinHost[] = "history-sync-optin";
- inline constexpr char kChromeUIHistorySyncOptinURL[] =
+ inline constexpr char kHeliumSetupHost[] = "setup";
 --- a/chrome/common/webui_url_constants.cc
 +++ b/chrome/common/webui_url_constants.cc
-@@ -170,6 +170,7 @@ base::span<const base::cstring_view> ChromeURLs() {
+@@ -2,4 +2,5 @@
        kChromeUIProfileInternalsHost,
        content::kChromeUIQuotaInternalsHost,
        kHeliumGodsEyeHost,
 +      kHeliumRestrictedPageHost,
        kHeliumSetupHost,
- #if !BUILDFLAG(IS_ANDROID)
-       kChromeUIWebUIToolbarHost,
 --- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
 +++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-@@ -45,6 +45,7 @@
- #include "chrome/browser/ui/webui/ntp_tiles_internals_ui.h"
- #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
+@@ -1,2 +1,3 @@
  #include "chrome/browser/ui/webui/gods_eye/gods_eye_ui.h"
 +#include "chrome/browser/ui/webui/gods_eye/restricted_page_ui.h"
  #include "chrome/browser/ui/webui/onboarding/onboarding_page_ui.h"
- #include "chrome/browser/ui/webui/policy/policy_ui.h"
- #include "chrome/browser/ui/webui/predictors/predictors_ui.h"
-@@ -451,6 +452,7 @@ void RegisterChromeWebUIConfigs() {
-   map.AddWebUIConfig(std::make_unique<IntroUIConfig>());
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -1,2 +1,3 @@
    map.AddWebUIConfig(std::make_unique<HeliumGodsEyePageConfig>());
-   map.AddWebUIConfig(std::make_unique<HeliumOnboardingPageConfig>());
 +  map.AddWebUIConfig(std::make_unique<HeliumRestrictedPageConfig>());
-   map.AddWebUIConfig(std::make_unique<ProfileCustomizationUIConfig>());
-   map.AddWebUIConfig(std::make_unique<ProfilePickerUIConfig>());
-   map.AddWebUIConfig(std::make_unique<SigninErrorUIConfig>());
+   map.AddWebUIConfig(std::make_unique<HeliumOnboardingPageConfig>());
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -166,6 +166,8 @@ static_library("ui") {
+@@ -1,4 +1,6 @@
      "webui/gods_eye/gods_eye_handler.h",
      "webui/gods_eye/gods_eye_ui.cc",
      "webui/gods_eye/gods_eye_ui.h",
 +    "webui/gods_eye/restricted_page_ui.cc",
 +    "webui/gods_eye/restricted_page_ui.h",
      "webui/omnibox/omnibox_page_handler.cc",
-     "webui/omnibox/omnibox_page_handler.h",
-     "webui/omnibox/omnibox_ui.cc",
---- /dev/null
+--- a/chrome/browser/ui/webui/gods_eye/restricted_page_ui.h
 +++ b/chrome/browser/ui/webui/gods_eye/restricted_page_ui.h
-@@ -0,0 +1,36 @@
+@@ -0,0 +1,31 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -81,9 +69,9 @@
 +};
 +
 +#endif  // CHROME_BROWSER_UI_WEBUI_GODS_EYE_RESTRICTED_PAGE_UI_H_
---- /dev/null
+--- a/chrome/browser/ui/webui/gods_eye/restricted_page_ui.cc
 +++ b/chrome/browser/ui/webui/gods_eye/restricted_page_ui.cc
-@@ -0,0 +1,44 @@
+@@ -0,0 +1,34 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -97,7 +85,6 @@
 +#include "content/public/browser/web_ui_controller.h"
 +#include "content/public/browser/web_ui_data_source.h"
 +#include "ui/webui/webui_util.h"
-+#include "components/grit/components_resources.h"
 +
 +HeliumRestrictedPage::HeliumRestrictedPage(content::WebUI* web_ui)
 +    : WebUIController(web_ui) {
@@ -119,15 +106,15 @@
 +}
 +
 +HeliumRestrictedPage::~HeliumRestrictedPage() = default;
---- /dev/null
+--- a/chrome/browser/resources/restricted_page/index.html
 +++ b/chrome/browser/resources/restricted_page/index.html
-@@ -0,0 +1,230 @@
+@@ -0,0 +1,124 @@
 +<!DOCTYPE html>
 +<html lang="en">
 +<head>
 +  <meta charset="UTF-8">
 +  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-+  <title>Restricted — God's Eye</title>
++  <title>Restricted</title>
 +  <style>
 +    :root {
 +      --helium-blue: #3450d1;
@@ -141,187 +128,107 @@
 +    }
 +    @media (prefers-color-scheme: dark) {
 +      :root {
-+        --bg: #1a1a1a;
-+        --surface: #242424;
-+        --text: #f0f0f0;
-+        --text-muted: #aaa;
-+        --border: #333;
-+        --helium-blue-light: #1e2a5c;
++        --bg: #1a1a1a; --surface: #242424; --text: #f0f0f0;
++        --text-muted: #aaa; --border: #333; --helium-blue-light: #1e2a5c;
 +      }
 +    }
 +    * { box-sizing: border-box; margin: 0; padding: 0; }
 +    body {
 +      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-+      background: var(--bg);
-+      color: var(--text);
-+      min-height: 100vh;
-+      display: flex;
-+      align-items: center;
-+      justify-content: center;
-+      padding: 24px;
++      background: var(--bg); color: var(--text); min-height: 100vh;
++      display: flex; align-items: center; justify-content: center; padding: 24px;
 +    }
 +    .card {
-+      background: var(--surface);
-+      border: 1px solid var(--border);
-+      border-radius: var(--radius);
-+      padding: 40px 36px;
-+      max-width: 520px;
-+      width: 100%;
-+      text-align: center;
++      background: var(--surface); border: 1px solid var(--border);
++      border-radius: var(--radius); padding: 40px 36px;
++      max-width: 520px; width: 100%; text-align: center;
 +    }
-+    .eye-icon { font-size: 56px; margin-bottom: 16px; display: block; }
-+    .title {
-+      font-size: 22px;
-+      font-weight: 700;
-+      color: var(--helium-blue);
-+      margin-bottom: 8px;
++    .eye { font-size: 56px; margin-bottom: 16px; display: block; }
++    .title { font-size: 22px; font-weight: 700; color: var(--helium-blue); margin-bottom: 8px; }
++    .detail {
++      background: var(--helium-blue-light); border-radius: 8px;
++      padding: 12px 16px; margin: 18px 0; font-size: 14px; color: var(--helium-blue);
 +    }
-+    .blocked-detail {
-+      background: var(--helium-blue-light);
-+      border-radius: 8px;
-+      padding: 12px 16px;
-+      margin: 18px 0;
-+      font-size: 14px;
-+      color: var(--helium-blue);
-+      word-break: break-all;
-+    }
-+    .blocked-label { font-weight: 600; margin-bottom: 4px; }
-+    .blocked-value { font-family: monospace; font-size: 15px; }
-+    .divider {
-+      border: none;
-+      border-top: 1px solid var(--border);
-+      margin: 24px 0;
-+    }
++    .detail-label { font-weight: 600; margin-bottom: 4px; }
++    .detail-value { font-family: monospace; font-size: 15px; word-break: break-all; }
++    hr { border: none; border-top: 1px solid var(--border); margin: 24px 0; }
 +    .quote-label {
-+      font-size: 11px;
-+      text-transform: uppercase;
-+      letter-spacing: 0.08em;
-+      color: var(--text-muted);
-+      margin-bottom: 10px;
++      font-size: 11px; text-transform: uppercase;
++      letter-spacing: 0.08em; color: var(--text-muted); margin-bottom: 10px;
 +    }
-+    .quote {
-+      font-size: 16px;
-+      font-style: italic;
-+      color: var(--text);
-+      line-height: 1.6;
-+      margin-bottom: 20px;
-+    }
-+    .countdown {
-+      font-size: 13px;
-+      color: var(--text-muted);
-+      margin-top: 16px;
-+    }
++    .quote { font-size: 16px; font-style: italic; line-height: 1.6; margin-bottom: 20px; }
++    .countdown { font-size: 13px; color: var(--text-muted); margin-top: 16px; }
 +    .countdown strong { color: var(--helium-blue); font-size: 15px; }
-+    .btn-godseye {
-+      display: inline-block;
-+      margin-top: 20px;
-+      padding: 10px 22px;
-+      background: var(--helium-blue);
-+      color: white;
-+      border-radius: 8px;
-+      border: none;
-+      font-size: 14px;
-+      cursor: pointer;
-+      font-weight: 500;
++    .btn {
++      display: inline-block; margin-top: 20px; padding: 10px 22px;
++      background: var(--helium-blue); color: white; border-radius: 8px;
++      border: none; font-size: 14px; cursor: pointer; font-weight: 500;
 +      text-decoration: none;
 +    }
-+    .btn-godseye:hover { opacity: 0.88; }
 +  </style>
 +</head>
 +<body>
 +<div class="card">
-+  <span class="eye-icon">👁</span>
-+  <div class="title">God's Eye — Access Restricted</div>
-
-+  <div class="blocked-detail" id="blocked-detail">
-+    <div class="blocked-label" id="blocked-label">Restricted</div>
-+    <div class="blocked-value" id="blocked-value">—</div>
++  <span class="eye">&#128065;</span>
++  <div class="title">Access Restricted by God's Eye</div>
++  <div class="detail">
++    <div class="detail-label" id="blocked-label">Restricted</div>
++    <div class="detail-value" id="blocked-value">--</div>
 +  </div>
-
-+  <hr class="divider">
-
++  <hr>
 +  <div class="quote-label">Motivation</div>
 +  <div class="quote" id="quote-text"></div>
-
-+  <div class="countdown" id="countdown">Loading expiry info…</div>
-
-+  <a href="chrome://godseye" class="btn-godseye">Open God's Eye Settings</a>
++  <div class="countdown" id="countdown">Loading...</div>
++  <a href="chrome://godseye" class="btn">Open God's Eye Settings</a>
 +</div>
-
 +<script>
 +(function() {
 +  'use strict';
-
-+  const QUOTES = [
++  var QUOTES = [
 +    "The secret of getting ahead is getting started.",
-+    "It always seems impossible until it's done. — Nelson Mandela",
-+    "Focus on being productive instead of busy. — Tim Ferriss",
++    "It always seems impossible until it's done. -- Nelson Mandela",
++    "Focus on being productive instead of busy. -- Tim Ferriss",
 +    "You don't have to be great to start, but you have to start to be great.",
-+    "The successful warrior is the average man, with laser-like focus. — Bruce Lee",
++    "The successful warrior is the average man, with laser-like focus. -- Bruce Lee",
 +    "One day or day one. You decide.",
 +    "Your future is created by what you do today, not tomorrow.",
 +    "Discipline is choosing between what you want now and what you want most.",
 +    "Small daily improvements are the key to staggering long-term results.",
-+    "Don't watch the clock; do what it does. Keep going. — Sam Levenson"
++    "Don't watch the clock; do what it does. Keep going. -- Sam Levenson"
 +  ];
-
-+  const TIME_API = 'https://timeapi.io/api/time/current/zone?timeZone=UTC';
-
-+  // Show a random quote
 +  document.getElementById('quote-text').textContent =
 +    QUOTES[Math.floor(Math.random() * QUOTES.length)];
-
-+  // Parse query params
-+  const params = new URLSearchParams(window.location.search);
-+  const reason = params.get('reason') || 'domain';
-+  const value = params.get('value') || '';
-+  const expiry = parseFloat(params.get('expiry') || '0');
-
-+  if (reason === 'keyword') {
-+    document.getElementById('blocked-label').textContent =
-+      'Restricted keyword detected:';
-+  } else {
-+    document.getElementById('blocked-label').textContent =
-+      'Restricted domain detected:';
-+  }
++  var params = new URLSearchParams(window.location.search);
++  var reason = params.get('reason') || 'domain';
++  var value = params.get('value') || '';
++  var expiry = parseFloat(params.get('expiry') || '0');
++  document.getElementById('blocked-label').textContent =
++    reason === 'keyword' ? 'Restricted keyword detected:' : 'Restricted domain detected:';
 +  document.getElementById('blocked-value').textContent = value || '(unknown)';
-
-+  // Fetch UTC time and compute days remaining
-+  async function updateCountdown() {
-+    let nowSeconds;
-+    try {
-+      const resp = await fetch(TIME_API);
-+      const data = await resp.json();
-+      nowSeconds = Math.floor(new Date(data.dateTime + 'Z').getTime() / 1000);
-+    } catch (e) {
-+      nowSeconds = Math.floor(Date.now() / 1000);
-+    }
-
-+    const countdown = document.getElementById('countdown');
-+    if (!expiry || expiry <= 0) {
-+      countdown.textContent = 'Restrictions are active.';
++  fetch('https://timeapi.io/api/time/current/zone?timeZone=UTC')
++    .then(function(r) { return r.json(); })
++    .then(function(d) {
++      var now = Math.floor(new Date(d.dateTime + 'Z').getTime() / 1000);
++      showCountdown(now);
++    })
++    .catch(function() { showCountdown(Math.floor(Date.now() / 1000)); });
++  function showCountdown(now) {
++    var el = document.getElementById('countdown');
++    if (!expiry || expiry <= 0) { el.textContent = 'Restrictions are active.'; return; }
++    var diff = expiry - now;
++    if (diff <= 0) {
++      el.innerHTML = 'Restrictions have <strong>expired</strong>. You may now update God\'s Eye.';
 +      return;
 +    }
-
-+    const diffSecs = expiry - nowSeconds;
-+    if (diffSecs <= 0) {
-+      countdown.innerHTML = 'Restrictions have <strong>expired</strong>. You can now update God\'s Eye settings.';
-+      return;
-+    }
-
-+    const days = Math.floor(diffSecs / 86400);
-+    const hours = Math.floor((diffSecs % 86400) / 3600);
-+    const mins = Math.floor((diffSecs % 3600) / 60);
-
-+    let timeStr = '';
-+    if (days > 0) timeStr += `${days} day${days !== 1 ? 's' : ''} `;
-+    if (hours > 0) timeStr += `${hours} hr${hours !== 1 ? 's' : ''} `;
-+    if (mins > 0 || (!days && !hours)) timeStr += `${mins} min`;
-
-+    countdown.innerHTML = `Time remaining: <strong>${timeStr.trim()}</strong>`;
++    var days = Math.floor(diff / 86400);
++    var hours = Math.floor((diff % 86400) / 3600);
++    var mins = Math.floor((diff % 3600) / 60);
++    var s = '';
++    if (days) s += days + ' day' + (days > 1 ? 's ' : ' ');
++    if (hours) s += hours + ' hr' + (hours > 1 ? 's ' : ' ');
++    if (mins || (!days && !hours)) s += mins + ' min';
++    el.innerHTML = 'Time remaining: <strong>' + s.trim() + '</strong>';
 +  }
-
-+  updateCountdown();
 +})();
 +</script>
 +</body>

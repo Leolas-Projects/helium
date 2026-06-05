@@ -1,45 +1,35 @@
 --- a/chrome/common/webui_url_constants.h
 +++ b/chrome/common/webui_url_constants.h
-@@ -492,6 +492,8 @@ inline constexpr char kChromeUIProfilePickerStartupQuery[] = "startup";
- inline constexpr char kChromeUIProfilePickerGlicQuery[] = "glic";
- inline constexpr char kChromeUIProfilePickerUrl[] = "chrome://profile-picker/";
- inline constexpr char kHeliumSetupHost[] = "setup";
+@@ -1,2 +1,4 @@
 +inline constexpr char kHeliumGodsEyeHost[] = "godseye";
 +inline constexpr char kHeliumGodsEyeURL[] = "chrome://godseye";
+ inline constexpr char kHeliumSetupHost[] = "setup";
  inline constexpr char kHeliumSetupURL[] = "chrome://setup";
- inline constexpr char kChromeUIHistorySyncOptinHost[] = "history-sync-optin";
- inline constexpr char kChromeUIHistorySyncOptinURL[] =
 --- a/chrome/common/webui_url_constants.cc
 +++ b/chrome/common/webui_url_constants.cc
-@@ -169,6 +169,7 @@ base::span<const base::cstring_view> ChromeURLs() {
+@@ -1,4 +1,5 @@
        kChromeUIPrefsInternalsHost,
        kChromeUIProfileInternalsHost,
        content::kChromeUIQuotaInternalsHost,
 +      kHeliumGodsEyeHost,
        kHeliumSetupHost,
- #if !BUILDFLAG(IS_ANDROID)
-       kChromeUIWebUIToolbarHost,
 --- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
 +++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
-@@ -44,6 +44,7 @@
+@@ -1,4 +1,5 @@
  #include "chrome/browser/ui/webui/net_internals/net_internals_ui.h"
  #include "chrome/browser/ui/webui/ntp_tiles_internals_ui.h"
  #include "chrome/browser/ui/webui/omnibox/omnibox_ui.h"
 +#include "chrome/browser/ui/webui/gods_eye/gods_eye_ui.h"
  #include "chrome/browser/ui/webui/onboarding/onboarding_page_ui.h"
- #include "chrome/browser/ui/webui/policy/policy_ui.h"
- #include "chrome/browser/ui/webui/predictors/predictors_ui.h"
-@@ -449,6 +450,7 @@ void RegisterChromeWebUIConfigs() {
-   map.AddWebUIConfig(std::make_unique<DefaultBrowserModalUIConfig>());
-   map.AddWebUIConfig(std::make_unique<ManagedUserProfileNoticeUIConfig>());
+--- a/chrome/browser/ui/webui/chrome_web_ui_configs.cc
++++ b/chrome/browser/ui/webui/chrome_web_ui_configs.cc
+@@ -1,2 +1,3 @@
    map.AddWebUIConfig(std::make_unique<IntroUIConfig>());
 +  map.AddWebUIConfig(std::make_unique<HeliumGodsEyePageConfig>());
    map.AddWebUIConfig(std::make_unique<HeliumOnboardingPageConfig>());
-   map.AddWebUIConfig(std::make_unique<ProfileCustomizationUIConfig>());
-   map.AddWebUIConfig(std::make_unique<ProfilePickerUIConfig>());
 --- a/chrome/browser/ui/BUILD.gn
 +++ b/chrome/browser/ui/BUILD.gn
-@@ -162,6 +162,10 @@ static_library("ui") {
+@@ -1,4 +1,8 @@
      "webui/net_internals/net_internals_ui.h",
      "webui/ntp_tiles_internals_ui.cc",
      "webui/ntp_tiles_internals_ui.h",
@@ -48,11 +38,9 @@
 +    "webui/gods_eye/gods_eye_ui.cc",
 +    "webui/gods_eye/gods_eye_ui.h",
      "webui/omnibox/omnibox_page_handler.cc",
-     "webui/omnibox/omnibox_page_handler.h",
-     "webui/omnibox/omnibox_ui.cc",
---- /dev/null
+--- a/chrome/browser/ui/webui/gods_eye/gods_eye_ui.h
 +++ b/chrome/browser/ui/webui/gods_eye/gods_eye_ui.h
-@@ -0,0 +1,38 @@
+@@ -0,0 +1,31 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -84,9 +72,9 @@
 +};
 +
 +#endif  // CHROME_BROWSER_UI_WEBUI_GODS_EYE_GODS_EYE_UI_H_
---- /dev/null
+--- a/chrome/browser/ui/webui/gods_eye/gods_eye_ui.cc
 +++ b/chrome/browser/ui/webui/gods_eye/gods_eye_ui.cc
-@@ -0,0 +1,50 @@
+@@ -0,0 +1,39 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -100,25 +88,8 @@
 +#include "content/public/browser/web_ui.h"
 +#include "content/public/browser/web_ui_controller.h"
 +#include "content/public/browser/web_ui_data_source.h"
++#include "net/base/features.h"
 +#include "ui/webui/webui_util.h"
-+#include "ui/base/resource/resource_bundle.h"
-+#include "components/grit/components_resources.h"
-+
-+namespace {
-+
-+void SetupGodsEyeDataSource(content::WebUIDataSource* source) {
-+  // Inline the full page HTML as a string resource
-+  source->SetDefaultResource(IDR_HELIUM_GODS_EYE_HTML);
-+  source->DisableTrustedTypesCSP();
-+  source->OverrideContentSecurityPolicy(
-+      network::mojom::CSPDirectiveName::ScriptSrc,
-+      "script-src 'self' 'unsafe-inline';");
-+  source->OverrideContentSecurityPolicy(
-+      network::mojom::CSPDirectiveName::ConnectSrc,
-+      "connect-src 'self' https://timeapi.io;");
-+}
-+
-+}  // namespace
 +
 +HeliumGodsEyePage::HeliumGodsEyePage(content::WebUI* web_ui)
 +    : WebUIController(web_ui) {
@@ -129,16 +100,23 @@
 +      content::WebUIDataSource::CreateAndAdd(
 +          profile, chrome::kHeliumGodsEyeHost);
 +
-+  SetupGodsEyeDataSource(source);
++  source->SetDefaultResource(IDR_HELIUM_GODS_EYE_HTML);
++  source->DisableTrustedTypesCSP();
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::ScriptSrc,
++      "script-src 'self' 'unsafe-inline';");
++  source->OverrideContentSecurityPolicy(
++      network::mojom::CSPDirectiveName::ConnectSrc,
++      "connect-src 'self' https://timeapi.io;");
 +
 +  web_ui->AddMessageHandler(
 +      std::make_unique<GodsEyeHandler>(browser_context));
 +}
 +
 +HeliumGodsEyePage::~HeliumGodsEyePage() = default;
---- /dev/null
+--- a/chrome/browser/ui/webui/gods_eye/gods_eye_handler.h
 +++ b/chrome/browser/ui/webui/gods_eye/gods_eye_handler.h
-@@ -0,0 +1,56 @@
+@@ -0,0 +1,36 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -163,7 +141,6 @@
 +  void RegisterMessages() override;
 +
 + private:
-+  // JS → C++ handlers
 +  void HandleGetGodsEyeData(const base::Value::List& args);
 +  void HandleSaveGodsEyeData(const base::Value::List& args);
 +  void HandleAddDomain(const base::Value::List& args);
@@ -176,9 +153,9 @@
 +};
 +
 +#endif  // CHROME_BROWSER_UI_WEBUI_GODS_EYE_GODS_EYE_HANDLER_H_
---- /dev/null
+--- a/chrome/browser/ui/webui/gods_eye/gods_eye_handler.cc
 +++ b/chrome/browser/ui/webui/gods_eye/gods_eye_handler.cc
-@@ -0,0 +1,175 @@
+@@ -0,0 +1,173 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -239,9 +216,6 @@
 +  double expiry = pref_service_->GetDouble(prefs::kGodsEyeExpiryTimestamp);
 +  bool active = pref_service_->GetBoolean(prefs::kGodsEyeActive);
 +
-+  // Check if expiry has passed using system clock as a safety backstop.
-+  // The UI also validates via TimeAPI, but we clear the active flag here
-+  // if system time clearly shows expiry has passed.
 +  if (active && expiry > 0.0) {
 +    double now = base::Time::Now().InSecondsFSinceUnixEpoch();
 +    if (now >= expiry) {
@@ -265,19 +239,16 @@
 +  const std::string& callback_id = args[0].GetString();
 +
 +  if (args.size() < 4) {
-+    ResolveJavascriptCallback(base::Value(callback_id),
-+                               base::Value(false));
++    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
 +  }
 +
-+  // args[1] = domains list, args[2] = keywords list, args[3] = expiryTimestamp
 +  const base::Value::List* domains = args[1].GetIfList();
 +  const base::Value::List* keywords = args[2].GetIfList();
 +  double expiry = args[3].GetDouble();
 +
 +  if (!domains || !keywords || expiry <= 0.0) {
-+    ResolveJavascriptCallback(base::Value(callback_id),
-+                               base::Value(false));
++    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
 +  }
 +
@@ -292,20 +263,16 @@
 +void GodsEyeHandler::HandleAddDomain(const base::Value::List& args) {
 +  AllowJavascript();
 +  const std::string& callback_id = args[0].GetString();
-+
 +  if (args.size() < 2 || !args[1].is_string()) {
 +    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
 +  }
-+
 +  const std::string& domain = args[1].GetString();
 +  if (domain.empty()) {
 +    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
 +  }
-+
 +  ScopedListPrefUpdate update(pref_service_, prefs::kGodsEyeBlockedDomains);
-+  // Avoid duplicates
 +  for (const auto& entry : *update) {
 +    if (entry.is_string() && entry.GetString() == domain) {
 +      ResolveJavascriptCallback(base::Value(callback_id), base::Value(true));
@@ -319,18 +286,15 @@
 +void GodsEyeHandler::HandleAddKeyword(const base::Value::List& args) {
 +  AllowJavascript();
 +  const std::string& callback_id = args[0].GetString();
-+
 +  if (args.size() < 2 || !args[1].is_string()) {
 +    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
 +  }
-+
 +  const std::string& keyword = args[1].GetString();
 +  if (keyword.empty()) {
 +    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
 +  }
-+
 +  ScopedListPrefUpdate update(pref_service_, prefs::kGodsEyeBlockedKeywords);
 +  for (const auto& entry : *update) {
 +    if (entry.is_string() && entry.GetString() == keyword) {
@@ -345,7 +309,6 @@
 +void GodsEyeHandler::HandleRemoveDomain(const base::Value::List& args) {
 +  AllowJavascript();
 +  const std::string& callback_id = args[0].GetString();
-+
 +  if (args.size() < 2 || !args[1].is_string()) {
 +    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
@@ -358,7 +321,6 @@
 +void GodsEyeHandler::HandleRemoveKeyword(const base::Value::List& args) {
 +  AllowJavascript();
 +  const std::string& callback_id = args[0].GetString();
-+
 +  if (args.size() < 2 || !args[1].is_string()) {
 +    ResolveJavascriptCallback(base::Value(callback_id), base::Value(false));
 +    return;
@@ -367,25 +329,9 @@
 +  update->EraseValue(base::Value(args[1].GetString()));
 +  ResolveJavascriptCallback(base::Value(callback_id), base::Value(true));
 +}
---- a/chrome/browser/resources/gods_eye/BUILD.gn
-+++ b/chrome/browser/resources/gods_eye/BUILD.gn
-@@ -0,0 +1,16 @@
-+# Copyright 2025 The Helium Authors
-+# You can use, redistribute, and/or modify this source code under
-+# the terms of the GPL-3.0 license that can be found in the LICENSE file.
-+
-+import("//ui/webui/resources/tools/build_webui.gni")
-+
-+build_webui("build") {
-+  grd_prefix = "helium_gods_eye"
-+  static_files = [ "index.html" ]
-+  non_web_component_files = [ "gods_eye.js" ]
-+  webui_context_type = "trusted"
-+  optimize = !is_debug
-+}
---- /dev/null
+--- a/chrome/browser/resources/gods_eye/index.html
 +++ b/chrome/browser/resources/gods_eye/index.html
-@@ -0,0 +1,285 @@
+@@ -0,0 +1,275 @@
 +<!DOCTYPE html>
 +<html lang="en">
 +<head>
@@ -396,15 +342,12 @@
 +    :root {
 +      --helium-blue: #3450d1;
 +      --helium-blue-light: #e8ecfb;
-+      --helium-red: #c0392b;
-+      --helium-red-light: #fdf0ef;
 +      --bg: #f5f5f5;
 +      --surface: #ffffff;
 +      --text: #1a1a1a;
 +      --text-muted: #666;
 +      --border: #e0e0e0;
 +      --radius: 8px;
-+      --lock-color: #888;
 +    }
 +    @media (prefers-color-scheme: dark) {
 +      :root {
@@ -414,66 +357,46 @@
 +        --text-muted: #aaa;
 +        --border: #333;
 +        --helium-blue-light: #1e2a5c;
-+        --helium-red-light: #3a1a18;
 +      }
 +    }
 +    * { box-sizing: border-box; margin: 0; padding: 0; }
 +    body {
 +      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-+      background: var(--bg);
-+      color: var(--text);
-+      min-height: 100vh;
-+      padding: 0;
++      background: var(--bg); color: var(--text); min-height: 100vh;
 +    }
 +    .header {
-+      background: var(--helium-blue);
-+      color: white;
-+      padding: 24px 32px 20px;
-+      display: flex;
-+      align-items: center;
-+      gap: 14px;
++      background: var(--helium-blue); color: white;
++      padding: 24px 32px 20px; display: flex; align-items: center; gap: 14px;
 +    }
 +    .header-icon { font-size: 28px; }
 +    .header h1 { font-size: 22px; font-weight: 600; }
 +    .header p { font-size: 13px; opacity: 0.85; margin-top: 2px; }
 +    .container { max-width: 760px; margin: 0 auto; padding: 28px 24px; }
 +    .card {
-+      background: var(--surface);
-+      border: 1px solid var(--border);
-+      border-radius: var(--radius);
-+      padding: 20px;
-+      margin-bottom: 20px;
++      background: var(--surface); border: 1px solid var(--border);
++      border-radius: var(--radius); padding: 20px; margin-bottom: 20px;
 +    }
 +    .card-title {
-+      font-size: 15px;
-+      font-weight: 600;
-+      margin-bottom: 14px;
-+      display: flex;
-+      align-items: center;
-+      gap: 8px;
++      font-size: 15px; font-weight: 600; margin-bottom: 14px;
++      display: flex; align-items: center; gap: 8px;
 +    }
 +    .status-bar {
-+      display: flex;
-+      align-items: center;
-+      gap: 10px;
-+      padding: 10px 14px;
-+      border-radius: var(--radius);
-+      font-size: 13px;
-+      margin-bottom: 20px;
++      display: flex; align-items: center; gap: 10px; padding: 10px 14px;
++      border-radius: var(--radius); font-size: 13px; margin-bottom: 20px;
 +    }
-+    .status-bar.active { background: var(--helium-blue-light); color: var(--helium-blue); border: 1px solid var(--helium-blue); }
-+    .status-bar.inactive { background: var(--surface); color: var(--text-muted); border: 1px solid var(--border); }
-+    .lock-icon { font-size: 16px; }
++    .status-bar.active {
++      background: var(--helium-blue-light); color: var(--helium-blue);
++      border: 1px solid var(--helium-blue);
++    }
++    .status-bar.inactive {
++      background: var(--surface); color: var(--text-muted);
++      border: 1px solid var(--border);
++    }
 +    label { display: block; font-size: 13px; color: var(--text-muted); margin-bottom: 6px; }
 +    input[type="datetime-local"], input[type="text"] {
-+      width: 100%;
-+      padding: 9px 12px;
-+      border: 1px solid var(--border);
-+      border-radius: var(--radius);
-+      font-size: 14px;
-+      background: var(--bg);
-+      color: var(--text);
-+      outline: none;
++      width: 100%; padding: 9px 12px; border: 1px solid var(--border);
++      border-radius: var(--radius); font-size: 14px;
++      background: var(--bg); color: var(--text); outline: none;
 +    }
 +    input:focus { border-color: var(--helium-blue); }
 +    input:disabled { opacity: 0.5; cursor: not-allowed; }
@@ -481,21 +404,13 @@
 +    .row { display: flex; gap: 8px; margin-top: 10px; }
 +    .row input { flex: 1; }
 +    button {
-+      padding: 9px 18px;
-+      border-radius: var(--radius);
-+      border: none;
-+      font-size: 14px;
-+      cursor: pointer;
-+      font-weight: 500;
-+      transition: opacity 0.15s;
++      padding: 9px 18px; border-radius: var(--radius); border: none;
++      font-size: 14px; cursor: pointer; font-weight: 500;
 +    }
 +    button:disabled { opacity: 0.45; cursor: not-allowed; }
-+    .btn-primary { background: var(--helium-blue); color: white; }
-+    .btn-primary:hover:not(:disabled) { opacity: 0.88; }
 +    .btn-add { background: var(--helium-blue-light); color: var(--helium-blue); }
-+    .btn-add:hover:not(:disabled) { opacity: 0.8; }
 +    .btn-remove {
-+      background: none; border: none; color: var(--helium-red);
++      background: none; border: none; color: #c0392b;
 +      cursor: pointer; font-size: 18px; padding: 0 6px; line-height: 1;
 +    }
 +    .btn-remove:disabled { opacity: 0.3; cursor: not-allowed; }
@@ -510,321 +425,185 @@
 +    .tag {
 +      display: inline-flex; align-items: center; gap: 6px;
 +      background: var(--helium-blue-light); color: var(--helium-blue);
-+      border-radius: 20px; padding: 4px 12px 4px 14px;
-+      font-size: 13px; font-weight: 500;
++      border-radius: 20px; padding: 4px 12px 4px 14px; font-size: 13px; font-weight: 500;
 +    }
 +    .tag.locked { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
 +    .empty-hint { font-size: 13px; color: var(--text-muted); font-style: italic; }
-+    .expiry-display {
-+      font-size: 13px; color: var(--text-muted);
-+      margin-top: 6px; display: flex; align-items: center; gap: 6px;
-+    }
-+    #save-error { color: var(--helium-red); font-size: 13px; margin-top: 8px; display: none; }
-+    .fetching-time { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
++    .expiry-display { font-size: 13px; color: var(--text-muted); margin-top: 6px; }
++    #save-error { color: #c0392b; font-size: 13px; margin-top: 8px; display: none; }
 +  </style>
 +</head>
 +<body>
 +<div class="header">
-+  <div class="header-icon">👁</div>
++  <div class="header-icon">&#128065;</div>
 +  <div>
 +    <h1>God's Eye</h1>
 +    <p>Block distracting websites and keywords for a set period of time</p>
 +  </div>
 +</div>
-+
 +<div class="container">
 +  <div id="status-bar" class="status-bar inactive">
-+    <span class="lock-icon">🔓</span>
 +    <span id="status-text">No active restrictions</span>
 +  </div>
-+
-+  <!-- Expiry Section -->
 +  <div class="card">
-+    <div class="card-title">⏱ Lock Duration</div>
-+    <label id="expiry-label">Set expiry date and time (your local time)</label>
++    <div class="card-title">&#9201; Lock Duration</div>
++    <label>Set expiry date and time (your local time)</label>
 +    <input type="datetime-local" id="expiry-input" />
-+    <div class="time-note" id="time-note">
-+      <span id="utc-time-display" class="fetching-time">Fetching current UTC time…</span>
-+    </div>
++    <div class="time-note" id="utc-time-display">Fetching current UTC time...</div>
 +    <div class="expiry-display" id="expiry-display" style="display:none"></div>
 +  </div>
-+
-+  <!-- Domains Section -->
 +  <div class="card">
-+    <div class="card-title">🌐 Blocked Domains</div>
++    <div class="card-title">&#127760; Blocked Domains</div>
 +    <div class="tag-list" id="domains-list"></div>
 +    <div class="row">
 +      <input type="text" id="domain-input" placeholder="e.g. example.com or sub.example.com" />
-+      <button class="btn-add" id="domain-add-btn" onclick="addDomain()">Add</button>
++      <button class="btn-add" onclick="addDomain()">Add</button>
 +    </div>
 +    <div class="time-note" style="margin-top:8px">
-+      Adding new entries is always allowed. Deleting existing entries is locked until expiry.
++      Adding new entries is always allowed. Deleting is locked until expiry.
 +    </div>
 +  </div>
-+
-+  <!-- Keywords Section -->
 +  <div class="card">
-+    <div class="card-title">🔍 Blocked Keywords</div>
++    <div class="card-title">&#128269; Blocked Keywords</div>
 +    <div class="tag-list" id="keywords-list"></div>
 +    <div class="row">
-+      <input type="text" id="keyword-input" placeholder="e.g. social media, news" />
-+      <button class="btn-add" id="keyword-add-btn" onclick="addKeyword()">Add</button>
++      <input type="text" id="keyword-input" placeholder="e.g. social, news" />
++      <button class="btn-add" onclick="addKeyword()">Add</button>
 +    </div>
 +    <div class="time-note" style="margin-top:8px">
 +      If any blocked keyword appears in a URL or search query, the page will be blocked.
 +    </div>
 +  </div>
-+
 +  <div id="save-error"></div>
-+  <button class="btn-save" id="save-btn" onclick="saveData()">🔒 Save &amp; Lock</button>
++  <button class="btn-save" id="save-btn" onclick="saveData()">&#128274; Save &amp; Lock</button>
 +</div>
-+
-+<script src="gods_eye.js"></script>
-+</body>
-+</html>
---- /dev/null
-+++ b/chrome/browser/resources/gods_eye/gods_eye.js
-@@ -0,0 +1,206 @@
-+// Copyright 2025 The Helium Authors
-+// You can use, redistribute, and/or modify this source code under
-+// the terms of the GPL-3.0 license that can be found in the LICENSE file.
-+
++<script>
 +'use strict';
++var TIME_API = 'https://timeapi.io/api/time/current/zone?timeZone=UTC';
++var state = { domains: [], keywords: [], expiryTimestamp: 0, active: false, nowUtc: 0 };
 +
-+const TIME_API_URL = 'https://timeapi.io/api/time/current/zone?timeZone=UTC';
-+
-+let state = {
-+  domains: [],
-+  keywords: [],
-+  expiryTimestamp: 0,
-+  active: false,
-+  currentUtcSeconds: 0,
-+};
-+
-+// Fetch current UTC time from TimeAPI
-+async function fetchUtcTime() {
++function fmt(ts) {
++  return ts ? new Date(ts * 1000).toLocaleString() : '';
++}
++function daysLeft(expiry, now) {
++  var d = expiry - now;
++  return d > 0 ? Math.ceil(d / 86400) : 0;
++}
++async function fetchUtc() {
 +  try {
-+    const resp = await fetch(TIME_API_URL);
-+    const data = await resp.json();
-+    // Parse dateTime string to Unix timestamp
-+    const dt = new Date(data.dateTime + 'Z');
-+    return Math.floor(dt.getTime() / 1000);
-+  } catch (e) {
-+    // Fallback: use local Date (less tamper-resistant but functional)
-+    return Math.floor(Date.now() / 1000);
-+  }
++    var r = await fetch(TIME_API);
++    var d = await r.json();
++    return Math.floor(new Date(d.dateTime + 'Z').getTime() / 1000);
++  } catch(e) { return Math.floor(Date.now() / 1000); }
 +}
-+
-+function formatDate(unixSeconds) {
-+  if (!unixSeconds) return '';
-+  const d = new Date(unixSeconds * 1000);
-+  return d.toLocaleString();
-+}
-+
-+function daysUntil(unixSeconds, nowSeconds) {
-+  const diff = unixSeconds - nowSeconds;
-+  if (diff <= 0) return 0;
-+  return Math.ceil(diff / 86400);
-+}
-+
-+function renderDomains() {
-+  const list = document.getElementById('domains-list');
-+  list.innerHTML = '';
-+  if (state.domains.length === 0) {
-+    list.innerHTML = '<span class="empty-hint">No domains added yet</span>';
-+    return;
-+  }
-+  state.domains.forEach((d, i) => {
-+    const tag = document.createElement('span');
++function renderTags(listId, items, removeFn) {
++  var el = document.getElementById(listId);
++  el.innerHTML = '';
++  if (!items.length) { el.innerHTML = '<span class="empty-hint">None added yet</span>'; return; }
++  items.forEach(function(v) {
++    var tag = document.createElement('span');
 +    tag.className = 'tag' + (state.active ? ' locked' : '');
-+    const btn = document.createElement('button');
++    tag.textContent = v;
++    var btn = document.createElement('button');
 +    btn.className = 'btn-remove';
-+    btn.textContent = '×';
++    btn.textContent = '\u00d7';
 +    btn.disabled = state.active;
 +    btn.title = state.active ? 'Locked until expiry' : 'Remove';
-+    btn.onclick = () => removeDomain(d);
-+    tag.textContent = d;
++    btn.onclick = function() { removeFn(v); };
 +    tag.appendChild(btn);
-+    list.appendChild(tag);
++    el.appendChild(tag);
 +  });
 +}
-+
-+function renderKeywords() {
-+  const list = document.getElementById('keywords-list');
-+  list.innerHTML = '';
-+  if (state.keywords.length === 0) {
-+    list.innerHTML = '<span class="empty-hint">No keywords added yet</span>';
-+    return;
-+  }
-+  state.keywords.forEach((k) => {
-+    const tag = document.createElement('span');
-+    tag.className = 'tag' + (state.active ? ' locked' : '');
-+    const btn = document.createElement('button');
-+    btn.className = 'btn-remove';
-+    btn.textContent = '×';
-+    btn.disabled = state.active;
-+    btn.title = state.active ? 'Locked until expiry' : 'Remove';
-+    btn.onclick = () => removeKeyword(k);
-+    tag.textContent = k;
-+    tag.appendChild(btn);
-+    list.appendChild(tag);
-+  });
-+}
-+
 +function renderStatus() {
-+  const bar = document.getElementById('status-bar');
-+  const text = document.getElementById('status-text');
-+  const expiryInput = document.getElementById('expiry-input');
-+  const saveBtn = document.getElementById('save-btn');
-+  const expiryDisplay = document.getElementById('expiry-display');
-+
-+  if (state.active && state.expiryTimestamp > state.currentUtcSeconds) {
++  var bar = document.getElementById('status-bar');
++  var txt = document.getElementById('status-text');
++  var inp = document.getElementById('expiry-input');
++  var btn = document.getElementById('save-btn');
++  var disp = document.getElementById('expiry-display');
++  if (state.active && state.expiryTimestamp > state.nowUtc) {
 +    bar.className = 'status-bar active';
-+    const days = daysUntil(state.expiryTimestamp, state.currentUtcSeconds);
-+    text.textContent = `🔒 Restrictions active — ${days} day${days !== 1 ? 's' : ''} remaining (until ${formatDate(state.expiryTimestamp)})`;
-+    expiryInput.disabled = true;
-+    saveBtn.textContent = '🔒 Locked — Add new entries above';
-+    saveBtn.disabled = true;
-+    expiryDisplay.style.display = 'flex';
-+    expiryDisplay.textContent = `Unlocks: ${formatDate(state.expiryTimestamp)}`;
++    var days = daysLeft(state.expiryTimestamp, state.nowUtc);
++    txt.textContent = '\uD83D\uDD12 Restrictions active -- ' + days + ' day(s) remaining';
++    inp.disabled = true;
++    btn.textContent = '\uD83D\uDD12 Locked';
++    btn.disabled = true;
++    disp.style.display = 'block';
++    disp.textContent = 'Unlocks: ' + fmt(state.expiryTimestamp);
 +  } else {
-+    if (state.active && state.expiryTimestamp <= state.currentUtcSeconds) {
-+      // Expired — deactivate
-+      state.active = false;
-+      state.expiryTimestamp = 0;
-+    }
++    if (state.active) { state.active = false; state.expiryTimestamp = 0; }
 +    bar.className = 'status-bar inactive';
-+    text.textContent = 'No active restrictions — configure below and lock';
-+    expiryInput.disabled = false;
-+    saveBtn.textContent = '🔒 Save & Lock';
-+    saveBtn.disabled = false;
-+    expiryDisplay.style.display = 'none';
++    txt.textContent = 'No active restrictions -- configure below and lock';
++    inp.disabled = false;
++    btn.textContent = '\uD83D\uDD12 Save & Lock';
++    btn.disabled = false;
++    disp.style.display = 'none';
 +  }
 +}
-+
 +async function init() {
-+  // Fetch UTC time first
-+  const utcNow = await fetchUtcTime();
-+  state.currentUtcSeconds = utcNow;
-+
-+  document.getElementById('utc-time-display').textContent =
-+    `Current UTC time: ${formatDate(utcNow)}`;
-+
-+  // Load data from C++ prefs via chrome.send
-+  const data = await new Promise((resolve) => {
-+    cr.sendWithPromise('getGodsEyeData').then(resolve);
-+  });
-
-+  state.domains = (data.domains || []);
-+  state.keywords = (data.keywords || []);
++  state.nowUtc = await fetchUtc();
++  document.getElementById('utc-time-display').textContent = 'Current UTC time: ' + fmt(state.nowUtc);
++  var data = await cr.sendWithPromise('getGodsEyeData');
++  state.domains = data.domains || [];
++  state.keywords = data.keywords || [];
 +  state.expiryTimestamp = data.expiryTimestamp || 0;
 +  state.active = data.active || false;
-+
-+  // Re-check expiry with authoritative UTC time
-+  if (state.active && state.expiryTimestamp > 0 &&
-+      utcNow >= state.expiryTimestamp) {
-+    state.active = false;
-+    state.expiryTimestamp = 0;
++  if (state.active && state.expiryTimestamp > 0 && state.nowUtc >= state.expiryTimestamp) {
++    state.active = false; state.expiryTimestamp = 0;
 +  }
-+
-+  renderDomains();
-+  renderKeywords();
++  renderTags('domains-list', state.domains, removeDomain);
++  renderTags('keywords-list', state.keywords, removeKeyword);
 +  renderStatus();
 +}
-+
 +function addDomain() {
-+  const input = document.getElementById('domain-input');
-+  const val = input.value.trim().toLowerCase().replace(/^https?:\/\//, '').replace(/\/$/, '');
-+  if (!val) return;
-+
++  var v = document.getElementById('domain-input').value.trim().toLowerCase()
++    .replace(/^https?:\/\//, '').replace(/\/$/, '');
++  if (!v) return;
 +  if (state.active) {
-+    // Active lock — send directly to C++ (always allowed)
-+    cr.sendWithPromise('addDomain', val).then((ok) => {
-+      if (ok) { state.domains.push(val); renderDomains(); }
++    cr.sendWithPromise('addDomain', v).then(function(ok) {
++      if (ok) { state.domains.push(v); renderTags('domains-list', state.domains, removeDomain); }
 +    });
 +  } else {
-+    if (!state.domains.includes(val)) state.domains.push(val);
-+    renderDomains();
++    if (!state.domains.includes(v)) state.domains.push(v);
++    renderTags('domains-list', state.domains, removeDomain);
 +  }
-+  input.value = '';
++  document.getElementById('domain-input').value = '';
 +}
-+
 +function addKeyword() {
-+  const input = document.getElementById('keyword-input');
-+  const val = input.value.trim().toLowerCase();
-+  if (!val) return;
-
++  var v = document.getElementById('keyword-input').value.trim().toLowerCase();
++  if (!v) return;
 +  if (state.active) {
-+    cr.sendWithPromise('addKeyword', val).then((ok) => {
-+      if (ok) { state.keywords.push(val); renderKeywords(); }
++    cr.sendWithPromise('addKeyword', v).then(function(ok) {
++      if (ok) { state.keywords.push(v); renderTags('keywords-list', state.keywords, removeKeyword); }
 +    });
 +  } else {
-+    if (!state.keywords.includes(val)) state.keywords.push(val);
-+    renderKeywords();
++    if (!state.keywords.includes(v)) state.keywords.push(v);
++    renderTags('keywords-list', state.keywords, removeKeyword);
 +  }
-+  input.value = '';
++  document.getElementById('keyword-input').value = '';
 +}
-+
-+function removeDomain(domain) {
-+  if (state.active) return; // locked
-+  state.domains = state.domains.filter(d => d !== domain);
-+  renderDomains();
-+}
-+
-+function removeKeyword(keyword) {
-+  if (state.active) return; // locked
-+  state.keywords = state.keywords.filter(k => k !== keyword);
-+  renderKeywords();
-+}
-+
++function removeDomain(v) { if (state.active) return; state.domains = state.domains.filter(function(d) { return d !== v; }); renderTags('domains-list', state.domains, removeDomain); }
++function removeKeyword(v) { if (state.active) return; state.keywords = state.keywords.filter(function(k) { return k !== v; }); renderTags('keywords-list', state.keywords, removeKeyword); }
 +async function saveData() {
 +  if (state.active) return;
-+  const errEl = document.getElementById('save-error');
-+  errEl.style.display = 'none';
-
-+  const expiryInput = document.getElementById('expiry-input');
-+  if (!expiryInput.value) {
-+    errEl.textContent = 'Please set an expiry date and time.';
-+    errEl.style.display = 'block';
-+    return;
-+  }
-
-+  // Convert local datetime to UTC unix timestamp via TimeAPI-fetched now
-+  const localDt = new Date(expiryInput.value);
-+  const expiryTs = Math.floor(localDt.getTime() / 1000);
-
-+  if (expiryTs <= state.currentUtcSeconds) {
-+    errEl.textContent = 'Expiry must be in the future.';
-+    errEl.style.display = 'block';
-+    return;
-+  }
-
-+  const ok = await cr.sendWithPromise(
-+    'saveGodsEyeData',
-+    state.domains,
-+    state.keywords,
-+    expiryTs
-+  );
-
++  var err = document.getElementById('save-error');
++  err.style.display = 'none';
++  var inp = document.getElementById('expiry-input');
++  if (!inp.value) { err.textContent = 'Please set an expiry date and time.'; err.style.display = 'block'; return; }
++  var ts = Math.floor(new Date(inp.value).getTime() / 1000);
++  if (ts <= state.nowUtc) { err.textContent = 'Expiry must be in the future.'; err.style.display = 'block'; return; }
++  var ok = await cr.sendWithPromise('saveGodsEyeData', state.domains, state.keywords, ts);
 +  if (ok) {
-+    state.expiryTimestamp = expiryTs;
-+    state.active = true;
-+    renderDomains();
-+    renderKeywords();
++    state.expiryTimestamp = ts; state.active = true;
++    renderTags('domains-list', state.domains, removeDomain);
++    renderTags('keywords-list', state.keywords, removeKeyword);
 +    renderStatus();
-+  } else {
-+    errEl.textContent = 'Failed to save. Please try again.';
-+    errEl.style.display = 'block';
-+  }
++  } else { err.textContent = 'Failed to save. Please try again.'; err.style.display = 'block'; }
 +}
-+
-+// Enter key support
-+document.addEventListener('DOMContentLoaded', () => {
-+  document.getElementById('domain-input').addEventListener('keydown', e => {
-+    if (e.key === 'Enter') addDomain();
-+  });
-+  document.getElementById('keyword-input').addEventListener('keydown', e => {
-+    if (e.key === 'Enter') addKeyword();
-+  });
++document.addEventListener('DOMContentLoaded', function() {
++  document.getElementById('domain-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') addDomain(); });
++  document.getElementById('keyword-input').addEventListener('keydown', function(e) { if (e.key === 'Enter') addKeyword(); });
 +  init();
 +});
++</script>
++</body>
++</html>

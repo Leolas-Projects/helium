@@ -1,6 +1,6 @@
 --- a/components/helium_services/pref_names.h
 +++ b/components/helium_services/pref_names.h
-@@ -28,6 +28,18 @@ inline constexpr char kHeliumDidOnboarding[] =
+@@ -1,6 +1,20 @@
  inline constexpr char kHeliumServicesConsented[] =
      "helium.services.user_consented";
  
@@ -11,7 +11,7 @@
 +inline constexpr char kGodsEyeBlockedKeywords[] =
 +    "helium.gods_eye.blocked_keywords";
 +
-+// UTC Unix timestamp (seconds, double) — 0.0 means not active
++// UTC Unix timestamp (seconds, double) -- 0.0 means not active
 +inline constexpr char kGodsEyeExpiryTimestamp[] =
 +    "helium.gods_eye.expiry_timestamp";
 +
@@ -23,14 +23,13 @@
  #endif  // COMPONENTS_HELIUM_SERVICES_PREF_NAMES_H_
 --- a/chrome/browser/ui/browser_ui_prefs.cc
 +++ b/chrome/browser/ui/browser_ui_prefs.cc
-@@ -222,6 +222,11 @@ void RegisterBrowserUserPrefs(user_prefs
-     registry->RegisterBooleanPref(prefs::kHeliumDidOnboarding, false);
+@@ -2,4 +2,9 @@
      registry->RegisterBooleanPref(prefs::kHeliumServicesConsented, false);
    }
-+
+ 
 +  registry->RegisterListPref(prefs::kGodsEyeBlockedDomains);
 +  registry->RegisterListPref(prefs::kGodsEyeBlockedKeywords);
 +  registry->RegisterDoublePref(prefs::kGodsEyeExpiryTimestamp, 0.0);
 +  registry->RegisterBooleanPref(prefs::kGodsEyeActive, false);
- 
++
    registry->RegisterBooleanPref(
