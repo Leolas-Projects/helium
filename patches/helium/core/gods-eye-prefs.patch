@@ -1,6 +1,6 @@
 --- a/components/helium_services/gods_eye_pref_names.h
 +++ b/components/helium_services/gods_eye_pref_names.h
-@@ -0,0 +1,26 @@
+@@ -0,0 +1,38 @@
 +// Copyright 2025 The Helium Authors
 +// You can use, redistribute, and/or modify this source code under
 +// the terms of the GPL-3.0 license that can be found in the LICENSE file.
@@ -10,7 +10,10 @@
 +
 +namespace prefs {
 +
-+// God's Eye feature prefs
++// God's Eye feature prefs.
++// All of these live in the global Local State so the feature applies to all
++// profiles, including incognito and guest sessions, with a single source of
++// truth. Only the system profile (profile-picker) is exempted from enforcement.
 +inline constexpr char kGodsEyeBlockedDomains[] =
 +    "helium.gods_eye.blocked_domains";
 +
@@ -24,28 +27,43 @@
 +inline constexpr char kGodsEyeActive[] =
 +    "helium.gods_eye.active";
 +
++// User-managed allowlist (active entries). ListValue of Dicts
++// {"domain": string, "added_at": double UTC seconds}.
++inline constexpr char kGodsEyeUserAllowedDomains[] =
++    "helium.gods_eye.user_allowed_domains";
++
++// Pending allowlist additions awaiting the 72h review window.
++// ListValue of Dicts {"domain": string, "requested_at": double UTC seconds}.
++inline constexpr char kGodsEyeAllowlistPending[] =
++    "helium.gods_eye.allowlist_pending";
++
 +}  // namespace prefs
 +
 +#endif  // COMPONENTS_HELIUM_SERVICES_GODS_EYE_PREF_NAMES_H_
---- a/chrome/browser/ui/browser_ui_prefs.cc
-+++ b/chrome/browser/ui/browser_ui_prefs.cc
-@@ -14,6 +14,7 @@
- #include "chrome/browser/upgrade_detector/upgrade_detector.h"
- #include "chrome/common/buildflags.h"
- #include "chrome/common/pref_names.h"
+--- a/chrome/browser/prefs/browser_prefs.cc
++++ b/chrome/browser/prefs/browser_prefs.cc
+@@ -125,4 +125,5 @@
+ #include "components/feature_engagement/public/pref_names.h"
 +#include "components/helium_services/gods_eye_pref_names.h"
- #include "components/helium_services/pref_names.h"
- #include "components/policy/core/common/policy_pref_names.h"
- #include "components/pref_registry/pref_registry_syncable.h"
-@@ -253,6 +254,11 @@
-     registry->RegisterBooleanPref(prefs::kHeliumUBlockAssetsEnabled, true);
-   }
- 
+ #include "components/history_clusters/core/history_clusters_prefs.h"
+ #include "components/image_fetcher/core/cache/image_cache.h"
+ #include "components/invalidation/impl/per_user_topic_subscription_manager.h"
+@@ -1414,6 +1415,18 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
+   RegisterScreenshotPrefs(registry);
+   search_engines::SearchEngineChoiceService::RegisterLocalStatePrefs(registry);
+   secure_origin_allowlist::RegisterPrefs(registry);
++
++  // Helium God's Eye (global). Registered in Local State so the feature is
++  // enforced consistently across all profiles, incognito windows, and guest
++  // sessions. Only the system profile is exempted at the throttle. Existing
++  // per-profile values from prior installs are not migrated; defaults make
++  // the feature inactive until the user re-enables it.
 +  registry->RegisterListPref(prefs::kGodsEyeBlockedDomains);
 +  registry->RegisterListPref(prefs::kGodsEyeBlockedKeywords);
 +  registry->RegisterDoublePref(prefs::kGodsEyeExpiryTimestamp, 0.0);
 +  registry->RegisterBooleanPref(prefs::kGodsEyeActive, false);
-+
-   registry->RegisterBooleanPref(
-       prefs::kHttpsOnlyModeEnabled, false,
-       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
++  registry->RegisterListPref(prefs::kGodsEyeUserAllowedDomains);
++  registry->RegisterListPref(prefs::kGodsEyeAllowlistPending);
+   segmentation_platform::SegmentationPlatformService::RegisterLocalStatePrefs(
+       registry);
+   SerialPolicyAllowedPorts::RegisterPrefs(registry);
