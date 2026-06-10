@@ -793,9 +793,9 @@
 +  return s;
 +}
 +
-+bool DomainInList(const base::Value::List& list, std::string_view domain) {
++bool DomainInList(const base::ListValue& list, std::string_view domain) {
 +  for (const base::Value& entry : list) {
-+    const base::Value::Dict* d = entry.GetIfDict();
++    const base::DictValue* d = entry.GetIfDict();
 +    if (!d) {
 +      continue;
 +    }
@@ -876,13 +876,13 @@
 +  // Promote any pending allowlist entries whose 72h review window has elapsed.
 +  GodsEyePromoteExpiredPendingAllowlist(prefs);
 +
-+  const base::Value::List& domains =
++  const base::ListValue& domains =
 +      prefs->GetList(prefs::kGodsEyeBlockedDomains);
-+  const base::Value::List& keywords =
++  const base::ListValue& keywords =
 +      prefs->GetList(prefs::kGodsEyeBlockedKeywords);
-+  const base::Value::List& user_allowed =
++  const base::ListValue& user_allowed =
 +      prefs->GetList(prefs::kGodsEyeUserAllowedDomains);
-+  const base::Value::List& pending =
++  const base::ListValue& pending =
 +      prefs->GetList(prefs::kGodsEyeAllowlistPending);
 +  double expiry = prefs->GetDouble(prefs::kGodsEyeExpiryTimestamp);
 +  bool active = prefs->GetBoolean(prefs::kGodsEyeActive);
@@ -1043,7 +1043,7 @@
 +    return;
 +  }
 +  ScopedListPrefUpdate update(prefs, prefs::kGodsEyeAllowlistPending);
-+  base::Value::Dict entry;
++  base::DictValue entry;
 +  entry.Set("domain", domain);
 +  entry.Set("requested_at", base::Time::Now().InSecondsFSinceUnixEpoch());
 +  update->Append(std::move(entry));
@@ -1060,9 +1060,9 @@
 +  }
 +  const std::string domain = NormalizeDomainInput(args[1].GetString());
 +  ScopedListPrefUpdate update(prefs, prefs::kGodsEyeUserAllowedDomains);
-+  base::Value::List& list = update.Get();
++  base::ListValue& list = update.Get();
 +  list.EraseIf([&](const base::Value& entry) {
-+    const base::Value::Dict* d = entry.GetIfDict();
++    const base::DictValue* d = entry.GetIfDict();
 +    if (!d) {
 +      return false;
 +    }
@@ -1083,9 +1083,9 @@
 +  }
 +  const std::string domain = NormalizeDomainInput(args[1].GetString());
 +  ScopedListPrefUpdate update(prefs, prefs::kGodsEyeAllowlistPending);
-+  base::Value::List& list = update.Get();
++  base::ListValue& list = update.Get();
 +  list.EraseIf([&](const base::Value& entry) {
-+    const base::Value::Dict* d = entry.GetIfDict();
++    const base::DictValue* d = entry.GetIfDict();
 +    if (!d) {
 +      return false;
 +    }

@@ -160,10 +160,10 @@
 +  if (host.empty()) {
 +    return false;
 +  }
-+  const base::Value::List& active =
++  const base::ListValue& active =
 +      local_state->GetList(prefs::kGodsEyeUserAllowedDomains);
 +  for (const base::Value& entry : active) {
-+    const base::Value::Dict* dict = entry.GetIfDict();
++    const base::DictValue* dict = entry.GetIfDict();
 +    if (!dict) {
 +      continue;
 +    }
@@ -182,18 +182,18 @@
 +  if (!local_state) {
 +    return;
 +  }
-+  const base::Value::List& pending =
++  const base::ListValue& pending =
 +      local_state->GetList(prefs::kGodsEyeAllowlistPending);
 +  if (pending.empty()) {
 +    return;
 +  }
 +  const double now = base::Time::Now().InSecondsFSinceUnixEpoch();
-+  base::Value::List new_pending;
-+  base::Value::List new_active =
++  base::ListValue new_pending;
++  base::ListValue new_active =
 +      local_state->GetList(prefs::kGodsEyeUserAllowedDomains).Clone();
 +  bool changed = false;
 +  for (const base::Value& entry : pending) {
-+    const base::Value::Dict* dict = entry.GetIfDict();
++    const base::DictValue* dict = entry.GetIfDict();
 +    if (!dict) {
 +      continue;
 +    }
@@ -203,7 +203,7 @@
 +      continue;
 +    }
 +    if (now - *requested >= kGodsEyeAllowlistReviewSeconds) {
-+      base::Value::Dict promoted;
++      base::DictValue promoted;
 +      promoted.Set("domain", *domain);
 +      promoted.Set("added_at", now);
 +      new_active.Append(std::move(promoted));
@@ -391,7 +391,7 @@
 +    return;
 +  }
 +
-+  const base::Value::List& keywords =
++  const base::ListValue& keywords =
 +      prefs->GetList(prefs::kGodsEyeBlockedKeywords);
 +  if (keywords.empty()) {
 +    return;
@@ -678,7 +678,7 @@
 +  if (base::StartsWith(host, "www.", base::CompareCase::INSENSITIVE_ASCII))
 +    host = host.substr(4);
 +
-+  const base::Value::List& domains =
++  const base::ListValue& domains =
 +      prefs->GetList(prefs::kGodsEyeBlockedDomains);
 +
 +  for (const auto& entry : domains) {
@@ -705,7 +705,7 @@
 +    return std::string();
 +
 +  std::string url_lower = base::ToLowerASCII(url.spec());
-+  const base::Value::List& keywords =
++  const base::ListValue& keywords =
 +      prefs->GetList(prefs::kGodsEyeBlockedKeywords);
 +
 +  for (const auto& entry : keywords) {
